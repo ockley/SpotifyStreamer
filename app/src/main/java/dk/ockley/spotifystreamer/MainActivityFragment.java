@@ -1,6 +1,7 @@
 package dk.ockley.spotifystreamer;
 
 import android.app.Fragment;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -27,6 +28,9 @@ import retrofit.client.Response;
 public class MainActivityFragment extends Fragment {
 
     public static final String SPOTIFY_TAG = "SPOTIFY_TAG";
+    public static final String EXTRA_ARTIST_NAME = "EXTRA_ARTIST_NAME";
+    public static final String EXTRA_ARTIST_ID = "EXTRA_ARTIST_ID";
+    public static final String EXTRA_ARTIST_IMAGE = "EXTRA_ARTIST_IMAGE";
     private EditText searchStringEditText;
     private static ListView artistsList;
     private SpotifyApi api;
@@ -67,6 +71,18 @@ public class MainActivityFragment extends Fragment {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Artist tmpArtist = (Artist) artistsList.getItemAtPosition(position);
                 Toast.makeText(getActivity(), tmpArtist.name, Toast.LENGTH_SHORT).show();
+
+                Intent i = new Intent(getActivity(), TopTracksActivity.class);
+
+                i.putExtra(EXTRA_ARTIST_NAME, tmpArtist.name);
+                i.putExtra(EXTRA_ARTIST_ID, tmpArtist.id);
+
+                if (tmpArtist.images.size() > 0) {
+                    i.putExtra(EXTRA_ARTIST_IMAGE, tmpArtist.images.get(0).url);
+                } else {
+                    i.putExtra(EXTRA_ARTIST_IMAGE, "http://www.solarimpulse.com/img/profile-no-photo.png");
+                }
+                startActivity(i);
             }
         });
 
@@ -74,13 +90,9 @@ public class MainActivityFragment extends Fragment {
         return v;
     }
 
-
-
-
-
     // Get artists based on search string
     private void getArtists(String searchStr) {
-        spotify.searchArtists(searchStr, new Callback<ArtistsPager>() {
+        spotify.searchArtists("*"+searchStr+"*", new Callback<ArtistsPager>() {
             @Override
             public void success(final ArtistsPager artistsPager, Response response) {
                 getActivity().runOnUiThread(new Runnable() {

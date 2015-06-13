@@ -5,13 +5,13 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -31,6 +31,7 @@ public class MainActivityFragment extends Fragment {
     public static final String EXTRA_ARTIST_NAME = "EXTRA_ARTIST_NAME";
     public static final String EXTRA_ARTIST_ID = "EXTRA_ARTIST_ID";
     public static final String EXTRA_ARTIST_IMAGE = "EXTRA_ARTIST_IMAGE";
+    private static final String SAVE_SEARCH = "save_search";
     private EditText searchStringEditText;
     private static ListView artistsList;
     private SpotifyApi api;
@@ -48,8 +49,9 @@ public class MainActivityFragment extends Fragment {
         api = new SpotifyApi();
         spotify = api.getService();
         artistsList = (ListView) v.findViewById(R.id.artist_list_view);
-        //artistsList.setAdapter(adapter);
         searchStringEditText = (EditText) v.findViewById(R.id.search_edit_text);
+        if(savedInstanceState != null)
+            searchStringEditText.setText(savedInstanceState.get(SAVE_SEARCH).toString());
         searchStringEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -58,7 +60,9 @@ public class MainActivityFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                getArtists(searchStringEditText.getText().toString());
+                if (searchStringEditText.getText().toString() != null) {
+                    getArtists(searchStringEditText.getText().toString());
+                }
             }
 
             @Override
@@ -70,13 +74,12 @@ public class MainActivityFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Artist tmpArtist = (Artist) artistsList.getItemAtPosition(position);
-                Toast.makeText(getActivity(), tmpArtist.name, Toast.LENGTH_SHORT).show();
 
                 Intent i = new Intent(getActivity(), TopTracksActivity.class);
-
                 i.putExtra(EXTRA_ARTIST_NAME, tmpArtist.name);
                 i.putExtra(EXTRA_ARTIST_ID, tmpArtist.id);
 
+                //Not all artists have images
                 if (tmpArtist.images.size() > 0) {
                     i.putExtra(EXTRA_ARTIST_IMAGE, tmpArtist.images.get(0).url);
                 } else {
@@ -90,21 +93,36 @@ public class MainActivityFragment extends Fragment {
         return v;
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(SAVE_SEARCH, searchStringEditText.getText().toString());
+        Log.d(SPOTIFY_TAG, outState.getString(SAVE_SEARCH));
+    }
+
     // Get artists based on search string
     private void getArtists(String searchStr) {
         spotify.searchArtists("*"+searchStr+"*", new Callback<ArtistsPager>() {
             @Override
             public void success(final ArtistsPager artistsPager, Response response) {
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (artistsPager.artists.items.size() > 0) {
-                            showArtists((ArrayList<Artist>) artistsPager.artists.items);
-                        } else {
+                        //Don't run on a null object
+                        if (artistsPager.artists.items.size() > 0)
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        showArtists((ArrayList<Artist>) artistsPager.artists.items);
+                                    } catch (NullPointerException e){
+
+                                    }finally {
+
+                                    }
+                                }
+                            });
+                        else {
                             artistsList.setAdapter(null);
                         }
-                    }
-                });
+
             }
 
             @Override

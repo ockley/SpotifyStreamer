@@ -2,6 +2,7 @@ package dk.ockley.spotifystreamer;
 
 import android.app.Fragment;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -12,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -52,7 +54,7 @@ public class MainActivityFragment extends Fragment {
         searchStringEditText = (EditText) v.findViewById(R.id.search_edit_text);
         if(savedInstanceState != null)
             searchStringEditText.setText(savedInstanceState.get(SAVE_SEARCH).toString());
-        searchStringEditText.addTextChangedListener(new TextWatcher() {
+            searchStringEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
@@ -60,9 +62,8 @@ public class MainActivityFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (searchStringEditText.getText().toString() != null) {
-                    getArtists(searchStringEditText.getText().toString());
-                }
+                if (!searchStringEditText.getText().toString().equals(""));
+                    new FetchArtistsTask().execute(searchStringEditText.getText().toString());
             }
 
             @Override
@@ -100,39 +101,24 @@ public class MainActivityFragment extends Fragment {
         Log.d(SPOTIFY_TAG, outState.getString(SAVE_SEARCH));
     }
 
-    // Get artists based on search string
-    private void getArtists(String searchStr) {
-        spotify.searchArtists("*"+searchStr+"*", new Callback<ArtistsPager>() {
-            @Override
-            public void success(final ArtistsPager artistsPager, Response response) {
-                        //Don't run on a null object
-                        if (artistsPager.artists.items.size() > 0)
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    try {
-                                        showArtists((ArrayList<Artist>) artistsPager.artists.items);
-                                    } catch (NullPointerException e){
+    class FetchArtistsTask extends AsyncTask<String, Void, ArrayList<Artist>> {
 
-                                    }finally {
+        @Override
+        protected ArrayList<Artist> doInBackground(String... params) {
+            ArtistsPager result = spotify.searchArtists("*"+params[0]+"*");
+            return (ArrayList<Artist>) result.artists.items;
+        }
 
-                                    }
-                                }
-                            });
-                        else {
-                            artistsList.setAdapter(null);
-                        }
-
+        @Override
+        protected void onPostExecute(ArrayList<Artist> artists) {
+            if (artists.size()>0) {
+                adapter = new ArtistsAdapter(getActivity(), artists);
+                artistsList.setAdapter(adapter);
+            } else {
+                if (!searchStringEditText.getText().toString().equals(""))
+                    Toast.makeText(getActivity(), "Artist not found. Please refine your search.", Toast.LENGTH_SHORT).show();
+                artistsList.setAdapter(null);
             }
-
-            @Override
-            public void failure(RetrofitError error) {
-            }
-        });
-    }
-
-    private void showArtists(ArrayList<Artist> artists) {
-        adapter = new ArtistsAdapter(getActivity(), artists);
-        artistsList.setAdapter(adapter);
+        }
     }
 }

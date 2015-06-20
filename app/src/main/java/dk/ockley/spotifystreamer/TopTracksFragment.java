@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,6 +68,8 @@ public class TopTracksFragment extends Fragment {
                     public void run() {
                         if (tracks.tracks.size() > 0) {
                             showTopTracks(tracks);
+                        } else {
+                            Toast.makeText(getActivity(), "No Top Tracks Found!", Toast.LENGTH_LONG).show();
                         }
 
                     }

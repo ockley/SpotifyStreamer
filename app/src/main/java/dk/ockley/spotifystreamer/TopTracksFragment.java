@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.io.IOError;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
@@ -59,6 +60,7 @@ public class TopTracksFragment extends Fragment {
     // Get artists based on search string
     private void getTopTracks(String searchStr) {
         Map<String, Object> options = new HashMap<>();
+        try {
         options.put("country", Locale.getDefault().getCountry());
         spotify.getArtistTopTrack(mArtistId, options, new Callback<Tracks>() {
             @Override
@@ -82,6 +84,10 @@ public class TopTracksFragment extends Fragment {
 
             }
         });
+
+        } catch (IOError e) {
+
+        }
     }
 
     private void showTopTracks(Tracks tracks) {

@@ -15,6 +15,8 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.io.IOError;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
@@ -98,15 +100,20 @@ public class MainActivityFragment extends Fragment {
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString(SAVE_SEARCH, searchStringEditText.getText().toString());
-        Log.d(SPOTIFY_TAG, outState.getString(SAVE_SEARCH));
     }
+
+
 
     class FetchArtistsTask extends AsyncTask<String, Void, ArrayList<Artist>> {
 
         @Override
         protected ArrayList<Artist> doInBackground(String... params) {
-            ArtistsPager result = spotify.searchArtists("*"+params[0]+"*");
-            return (ArrayList<Artist>) result.artists.items;
+            try {
+                ArtistsPager result = spotify.searchArtists("*"+params[0]+"*");
+                return (ArrayList<Artist>) result.artists.items;
+            } catch (IOError e) {
+                return null;
+            }
         }
 
         @Override

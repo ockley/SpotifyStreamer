@@ -1,8 +1,10 @@
 package dk.ockley.spotifystreamer;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,80 +21,95 @@ import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Track;
 import kaaes.spotify.webapi.android.models.Tracks;
-import retrofit.Callback;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
 
-
-/**
- * A placeholder fragment containing a simple view.
- */
 public class TopTracksFragment extends Fragment {
 
-    private static final String SPOTIFY_TAG = "SPOTIFY_TAG";
-    private String mArtistName;
-    private String mArtistId;
-    private String mArtistImage;
-    private SpotifyApi api;
+    private static final String EXTRA_TOP_TRACKS = "EXTRA_TOP_TRACKS";
     private SpotifyService spotify;
     private ListView topTracksList;
-    private TopTracksAdapter adapter;
+    private ArrayList<ParcelableTopTracks> topTracksParcel;
+    private static Toast toast;
 
     public TopTracksFragment() {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        setRetainInstance(true);
+
         View v =  inflater.inflate(R.layout.fragment_top_tracks, container, false);
 
-        Intent i  = getActivity().getIntent();
-        mArtistName = i.getStringExtra(MainActivityFragment.EXTRA_ARTIST_NAME);
-        mArtistId = i.getStringExtra(MainActivityFragment.EXTRA_ARTIST_ID);
-        mArtistImage = i.getStringExtra(MainActivityFragment.EXTRA_ARTIST_IMAGE);
-        api = new SpotifyApi();
-        spotify = api.getService();
+        //Hook up the list view item
         topTracksList = (ListView) v.findViewById(R.id.artist_top_tracks_listview);
-        getTopTracks(mArtistId);
+
+        //If saved instance then populate list with top tracks
+        if (savedInstanceState != null) {
+            topTracksParcel = savedInstanceState.getParcelableArrayList(EXTRA_TOP_TRACKS);
+        } else {
+            topTracksParcel = new ArrayList<>();
+        }
+
+        // Test that the intent has a parcelable artist
+        Intent i  = getActivity().getIntent();
+        if (i.hasExtra(MainActivityFragment.EXTRA_ARTIST)) {
+            ArtistParcelable artist = i.getParcelableExtra(MainActivityFragment.EXTRA_ARTIST);
+            new FetchTopTracks().execute(artist.getArtistId());
+        }
+
         return v;
     }
 
-    // Get artists based on search string
-    private void getTopTracks(String searchStr) {
-        Map<String, Object> options = new HashMap<>();
-        try {
-        options.put("country", Locale.getDefault().getCountry());
-        spotify.getArtistTopTrack(mArtistId, options, new Callback<Tracks>() {
-            @Override
-            public void success(final Tracks tracks, Response response) {
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (tracks.tracks.size() > 0) {
-                            showTopTracks(tracks);
-                        } else {
-                            Toast.makeText(getActivity(), "No Top Tracks Found!", Toast.LENGTH_LONG).show();
-                        }
-
-                    }
-                });
-
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-
-            }
-        });
-
-        } catch (IOError e) {
-
-        }
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelableArrayList(EXTRA_TOP_TRACKS, topTracksParcel);
     }
 
-    private void showTopTracks(Tracks tracks) {
+    class FetchTopTracks extends AsyncTask<String, Void, ArrayList<Track>> {
 
-        adapter = new TopTracksAdapter(getActivity(), (ArrayList<Track>) tracks.tracks);
-        topTracksList.setAdapter(adapter);
+        @Override
+        protected ArrayList<Track> doInBackground(String... params) {
+            try {
+                //Connect to the Spotify service
+                SpotifyApi api = new SpotifyApi();
+                spotify = api.getService();
+
+                // Make option from locale country or default to US
+                Map<String, Object> options = new HashMap<>();
+                String country = Locale.getDefault().getCountry();
+                if (country.equals("")) country = "US";
+                options.put("country", country);
+
+                Tracks result = spotify.getArtistTopTrack(params[0], options);
+                return (ArrayList<Track>) result.tracks;
+
+            } catch (IOError e) {
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<Track> tracks) {
+            super.onPostExecute(tracks);
+            //Clear the top tracks list
+            topTracksParcel = new ArrayList<>();
+            if (tracks.size() > 0) {
+                for (Track track : tracks) {
+                    //Populate the list with parcelable top tracks
+                    if(track.album.images.size() > 0)
+                        topTracksParcel.add(new ParcelableTopTracks(track.name, track.album.name, track.album.images.get(0).url));
+                     else
+                        topTracksParcel.add(new ParcelableTopTracks(track.name, track.album.name, null));
+                }
+            } else {
+                if (toast != null)
+                    toast.cancel();
+                toast.makeText(getActivity(),"No Top Tracks Found!", Toast.LENGTH_SHORT).show();
+            }
+
+            //Populate list view with adapter
+            TopTracksAdapter adapter = new TopTracksAdapter(getActivity(), topTracksParcel);
+            topTracksList.setAdapter(adapter);
+        }
     }
 }

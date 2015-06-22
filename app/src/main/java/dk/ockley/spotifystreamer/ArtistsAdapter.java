@@ -12,37 +12,34 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 
-import kaaes.spotify.webapi.android.models.Artist;
-
-public class ArtistsAdapter extends ArrayAdapter<Artist> {
+public class ArtistsAdapter extends ArrayAdapter<ArtistParcelable>{
     private Context ctx;
-    private ArrayList<Artist> mArtists;
 
-    public ArtistsAdapter(Context context, ArrayList<Artist> artists) {
+    public ArtistsAdapter(Context context, ArrayList<ArtistParcelable> artists) {
         super(context, 0, artists);
         ctx = context;
-        mArtists = artists;
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        String name = getItem(position).name;
-        String imgUrl;
 
-        if (getItem(position).images.size() > 0) {
-            imgUrl = (getItem(position)).images.get(0).url;
-        } else {
-            imgUrl = "http://www.solarimpulse.com/img/profile-no-photo.png";
-        }
-
+        //Get previous view or make a new
         if(convertView == null) {
             convertView = LayoutInflater.from(getContext()).inflate(R.layout.search_view_item, parent, false);
         }
         ImageView artistImage = (ImageView) convertView.findViewById(R.id.artist_image);
         TextView artistName = (TextView) convertView.findViewById(R.id.artist_name);
 
+        //Populate view elements with fields from parcelable artist
+        String name = getItem(position).getArtistName();
+        String imgUrl = getItem(position).getArtistImage();
+
         artistName.setText(name);
-        Picasso.with(ctx).load(imgUrl).into(artistImage);
+        if (imgUrl != null) {
+            Picasso.with(ctx).load(imgUrl).into(artistImage);
+        } else {
+            Picasso.with(ctx).load(R.drawable.profile_no_photo).into(artistImage);
+        }
 
         return convertView;
     }

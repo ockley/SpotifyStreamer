@@ -4,4 +4,5 @@
     <string name="title_activity_artist_top_tracks">Artist Top Tracks</string>
     <string name="title_activity_top_tracks">TopTracks</string>
     <string name="title_activity_out">out</string>
+    <string name="artist_name_label">Artist Name</string>
 </resources>

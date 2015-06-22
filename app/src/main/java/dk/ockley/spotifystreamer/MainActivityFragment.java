@@ -16,47 +16,54 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.IOError;
-import java.io.IOException;
 import java.util.ArrayList;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.ArtistsPager;
-import retrofit.Callback;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
-
 
 
 public class MainActivityFragment extends Fragment {
+    // Constants
+    public static final String EXTRA_ARTIST_LIST = "EXTRA_ARTIST_LIST";
+    private static final String EXTRA_SAVE_SEARCH = "EXTRA_SAVE_SEARCH";
+    public static final String EXTRA_ARTIST = "EXTRA_ARTIST";
 
-    public static final String SPOTIFY_TAG = "SPOTIFY_TAG";
-    public static final String EXTRA_ARTIST_NAME = "EXTRA_ARTIST_NAME";
-    public static final String EXTRA_ARTIST_ID = "EXTRA_ARTIST_ID";
-    public static final String EXTRA_ARTIST_IMAGE = "EXTRA_ARTIST_IMAGE";
-    private static final String SAVE_SEARCH = "save_search";
+    //View items
     private EditText searchStringEditText;
-    private static ListView artistsList;
-    private SpotifyApi api;
-    private SpotifyService spotify;
-    private ArtistsAdapter adapter;
+    private static ListView artistsListView;
+
+    //Other
+    private ArrayList<ArtistParcelable> artistArrayList;
+    private static Toast toast;
 
     public MainActivityFragment() {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        setRetainInstance(true);
+
         View v = inflater.inflate(R.layout.fragment_main, container, false);
 
-        api = new SpotifyApi();
-        spotify = api.getService();
-        artistsList = (ListView) v.findViewById(R.id.artist_list_view);
+        //Fetch view items
+        artistsListView = (ListView) v.findViewById(R.id.artist_list_view);
         searchStringEditText = (EditText) v.findViewById(R.id.search_edit_text);
-        if(savedInstanceState != null)
-            searchStringEditText.setText(savedInstanceState.get(SAVE_SEARCH).toString());
-            searchStringEditText.addTextChangedListener(new TextWatcher() {
+
+        //If returning from a saved instance, then populate artist list and search field
+        if (savedInstanceState != null) {
+            try {
+                artistArrayList = savedInstanceState.getParcelableArrayList(EXTRA_ARTIST_LIST);
+                searchStringEditText.setText(savedInstanceState.get(EXTRA_SAVE_SEARCH).toString());
+            } catch (Error e) {
+
+            }
+        } else {
+            artistArrayList = new ArrayList<>();
+        }
+
+        searchStringEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
@@ -64,7 +71,8 @@ public class MainActivityFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (!searchStringEditText.getText().toString().equals(""));
+                //Prevent searching an empty string
+                if (!searchStringEditText.getText().toString().equals(""))
                     new FetchArtistsTask().execute(searchStringEditText.getText().toString());
             }
 
@@ -73,43 +81,35 @@ public class MainActivityFragment extends Fragment {
 
             }
         });
-        artistsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        artistsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Artist tmpArtist = (Artist) artistsList.getItemAtPosition(position);
-
+                // Place parcelable artist as an extra for use in detail TopTracksActivity
                 Intent i = new Intent(getActivity(), TopTracksActivity.class);
-                i.putExtra(EXTRA_ARTIST_NAME, tmpArtist.name);
-                i.putExtra(EXTRA_ARTIST_ID, tmpArtist.id);
-
-                //Not all artists have images
-                if (tmpArtist.images.size() > 0) {
-                    i.putExtra(EXTRA_ARTIST_IMAGE, tmpArtist.images.get(0).url);
-                } else {
-                    i.putExtra(EXTRA_ARTIST_IMAGE, "http://www.solarimpulse.com/img/profile-no-photo.png");
-                }
+                i.putExtra(EXTRA_ARTIST, (ArtistParcelable) artistsListView.getItemAtPosition(position));
                 startActivity(i);
             }
         });
 
-        // Return the fragment view to the activity
         return v;
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString(SAVE_SEARCH, searchStringEditText.getText().toString());
+        //Make sure that both search string and list of artists is saved on configuration change.
+        outState.putString(EXTRA_SAVE_SEARCH, searchStringEditText.getText().toString());
+        outState.putParcelableArrayList(EXTRA_ARTIST_LIST, artistArrayList);
     }
-
-
 
     class FetchArtistsTask extends AsyncTask<String, Void, ArrayList<Artist>> {
 
         @Override
         protected ArrayList<Artist> doInBackground(String... params) {
             try {
-                ArtistsPager result = spotify.searchArtists("*"+params[0]+"*");
+                SpotifyApi api = new SpotifyApi();
+                SpotifyService spotify = api.getService();
+                ArtistsPager result = spotify.searchArtists("*" + params[0] + "*");
                 return (ArrayList<Artist>) result.artists.items;
             } catch (IOError e) {
                 return null;
@@ -118,13 +118,28 @@ public class MainActivityFragment extends Fragment {
 
         @Override
         protected void onPostExecute(ArrayList<Artist> artists) {
-            if (artists.size()>0) {
-                adapter = new ArtistsAdapter(getActivity(), artists);
-                artistsList.setAdapter(adapter);
+            //Clear the artist list
+            artistArrayList = new ArrayList<>();
+            if (artists.size() > 0) {
+                for (Artist artist : artists) {
+                    //Populate the list with parcelable artists with relevant data
+                    if (artist.images.size() > 0) {
+                        artistArrayList.add(new ArtistParcelable(artist.id, artist.name, artist.images.get(0).url));
+                    } else {
+                        artistArrayList.add(new ArtistParcelable(artist.id, artist.name, null));
+                    }
+                }
+                //Attach adapter to list view.
+                ArtistsAdapter adapter = new ArtistsAdapter(getActivity(), artistArrayList);
+                artistsListView.setAdapter(adapter);
             } else {
-                if (!searchStringEditText.getText().toString().equals(""))
-                    Toast.makeText(getActivity(), "Artist not found. Please refine your search.", Toast.LENGTH_SHORT).show();
-                artistsList.setAdapter(null);
+                //No artists. Make a toast!
+                if (!searchStringEditText.getText().toString().equals("")) {
+                    if (toast != null)
+                        toast.cancel();
+                    toast.makeText(getActivity(), "Artist not found. Please refine your search.", Toast.LENGTH_SHORT).show();
+                }
+                artistsListView.setAdapter(null);
             }
         }
     }

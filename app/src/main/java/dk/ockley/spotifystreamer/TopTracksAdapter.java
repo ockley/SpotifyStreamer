@@ -14,31 +14,18 @@ import java.util.ArrayList;
 
 import kaaes.spotify.webapi.android.models.Track;
 
-/**
- * Created by kv on 10/06/15.
- */
-public class TopTracksAdapter extends ArrayAdapter<Track> {
+public class TopTracksAdapter extends ArrayAdapter<ParcelableTopTracks> {
     private Context ctx;
-    private ArrayList<Track> mTracks;
 
-    public TopTracksAdapter(Context context, ArrayList<Track> tracks) {
+    public TopTracksAdapter(Context context, ArrayList<ParcelableTopTracks> tracks) {
         super(context, 0, tracks);
         ctx = context;
-        mTracks = tracks;
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        String songName = getItem(position).name;
-        String albumName = getItem(position).album.name;
-        String imgUrl;
 
-        if (getItem(position).album.images.size() > 0) {
-            imgUrl = (getItem(position)).album.images.get(0).url;
-        } else {
-            imgUrl = "http://www.solarimpulse.com/img/profile-no-photo.png";
-        }
-
+        //Get previous view or make a new one
         if(convertView == null) {
             convertView = LayoutInflater.from(getContext()).inflate(R.layout.top_tracks_view_item, parent, false);
         }
@@ -46,10 +33,16 @@ public class TopTracksAdapter extends ArrayAdapter<Track> {
         TextView songNameField = (TextView) convertView.findViewById(R.id.top_tracks_song_name);
         TextView albumNameField = (TextView) convertView.findViewById(R.id.top_tracks_album_name);
 
-
+        // Get values from parcelable top track and populate view elements
+        String songName = getItem(position).getSongName();
+        String albumName = getItem(position).getAlbumName();
+        String imgUrl = getItem(position).getAlbumImage();
         songNameField.setText(songName);
         albumNameField.setText(albumName);
-        Picasso.with(ctx).load(imgUrl).into(trackImageField);
+        if (imgUrl != null)
+            Picasso.with(ctx).load(imgUrl).into(trackImageField);
+        else
+            Picasso.with(ctx).load(R.drawable.profile_no_photo).into(trackImageField);
 
         return convertView;
     }

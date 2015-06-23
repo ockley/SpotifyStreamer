@@ -6,7 +6,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,13 +14,13 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.io.IOError;
 import java.util.ArrayList;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.ArtistsPager;
+import retrofit.RetrofitError;
 
 
 public class MainActivityFragment extends Fragment {
@@ -60,7 +59,7 @@ public class MainActivityFragment extends Fragment {
 
             }
         } else {
-            artistArrayList = new ArrayList<>();
+            artistArrayList = new ArrayList<ArtistParcelable>();
         }
 
         searchStringEditText.addTextChangedListener(new TextWatcher() {
@@ -106,12 +105,12 @@ public class MainActivityFragment extends Fragment {
 
         @Override
         protected ArrayList<Artist> doInBackground(String... params) {
+            SpotifyApi api = new SpotifyApi();
+            SpotifyService spotify = api.getService();
             try {
-                SpotifyApi api = new SpotifyApi();
-                SpotifyService spotify = api.getService();
                 ArtistsPager result = spotify.searchArtists("*" + params[0] + "*");
                 return (ArrayList<Artist>) result.artists.items;
-            } catch (IOError e) {
+            } catch (RetrofitError e) {
                 return null;
             }
         }
@@ -119,8 +118,8 @@ public class MainActivityFragment extends Fragment {
         @Override
         protected void onPostExecute(ArrayList<Artist> artists) {
             //Clear the artist list
-            artistArrayList = new ArrayList<>();
-            if (artists.size() > 0) {
+            artistArrayList = new ArrayList<ArtistParcelable>();
+            if (artists != null && artists.size() > 0) {
                 for (Artist artist : artists) {
                     //Populate the list with parcelable artists with relevant data
                     if (artist.images.size() > 0) {

@@ -9,7 +9,8 @@
         android:id="@+id/search_edit_text"
         android:hint="Enter artist name."
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:inputType="text" />
     <ListView
         android:id="@+id/artist_list_view"
         android:layout_width="match_parent"

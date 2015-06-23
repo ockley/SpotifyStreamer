@@ -5,16 +5,16 @@
               android:layout_height="match_parent">
     <ImageView
         android:id="@+id/artist_image"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginRight="15dp"
+        android:layout_width="@dimen/list_thumbnail_size"
+        android:layout_height="@dimen/list_thumbnail_size"
+        android:layout_marginRight="@dimen/list_thumbnail_margin_right"
         android:scaleType="centerCrop"/>
     <TextView
         android:id="@+id/artist_name"
         android:text="@string/artist_name_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="18dp"
-        android:paddingTop="30dp"/>
+        android:textSize="@dimen/list_item_header1"
+        android:paddingTop="@dimen/list_item_single_line_padding_top" />
 
 </LinearLayout>

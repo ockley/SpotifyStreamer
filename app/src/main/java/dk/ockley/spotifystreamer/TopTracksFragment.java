@@ -21,6 +21,7 @@ import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Track;
 import kaaes.spotify.webapi.android.models.Tracks;
+import retrofit.RetrofitError;
 
 public class TopTracksFragment extends Fragment {
 
@@ -46,12 +47,12 @@ public class TopTracksFragment extends Fragment {
         if (savedInstanceState != null) {
             topTracksParcel = savedInstanceState.getParcelableArrayList(EXTRA_TOP_TRACKS);
         } else {
-            topTracksParcel = new ArrayList<>();
+            topTracksParcel = new ArrayList<ParcelableTopTracks>();
         }
 
         // Test that the intent has a parcelable artist
         Intent i  = getActivity().getIntent();
-        if (i.hasExtra(MainActivityFragment.EXTRA_ARTIST)) {
+        if (i != null && i.hasExtra(MainActivityFragment.EXTRA_ARTIST)) {
             ArtistParcelable artist = i.getParcelableExtra(MainActivityFragment.EXTRA_ARTIST);
             new FetchTopTracks().execute(artist.getArtistId());
         }
@@ -69,11 +70,10 @@ public class TopTracksFragment extends Fragment {
 
         @Override
         protected ArrayList<Track> doInBackground(String... params) {
+            //Connect to the Spotify service
+            SpotifyApi api = new SpotifyApi();
+            spotify = api.getService();
             try {
-                //Connect to the Spotify service
-                SpotifyApi api = new SpotifyApi();
-                spotify = api.getService();
-
                 // Make option from locale country or default to US
                 Map<String, Object> options = new HashMap<>();
                 String country = Locale.getDefault().getCountry();
@@ -83,7 +83,7 @@ public class TopTracksFragment extends Fragment {
                 Tracks result = spotify.getArtistTopTrack(params[0], options);
                 return (ArrayList<Track>) result.tracks;
 
-            } catch (IOError e) {
+            } catch (RetrofitError e) {
                 return null;
             }
         }
@@ -92,8 +92,8 @@ public class TopTracksFragment extends Fragment {
         protected void onPostExecute(ArrayList<Track> tracks) {
             super.onPostExecute(tracks);
             //Clear the top tracks list
-            topTracksParcel = new ArrayList<>();
-            if (tracks.size() > 0) {
+            topTracksParcel = new ArrayList<ParcelableTopTracks>();
+            if (tracks != null && tracks.size() > 0) {
                 for (Track track : tracks) {
                     //Populate the list with parcelable top tracks
                     if(track.album.images.size() > 0)
